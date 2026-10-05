@@ -55,9 +55,11 @@ repomind/
 ## 4. Component Boundaries & Responsibilities
 
 ### 4.1 Backend (`backend/`)
-- **Technology**: Python 3.11+, FastAPI, SQLAlchemy, PostgreSQL, Pydantic Settings.
+- **Technology**: Python 3.11+, FastAPI, SQLAlchemy 2.0, Alembic, PostgreSQL, Pydantic Settings.
 - **Responsibilities**:
   - Exposes RESTful API endpoints (`/health`, `/api/v1/repositories`, etc.).
+  - Manages database sessions, connection pooling, and Alembic migrations (`alembic/versions/`).
+  - Implements the core domain models: `Repository` with lifecycle statuses (`pending`, `indexing`, `ready`, `failed`).
   - Manages database sessions, connection pooling, and migrations.
   - Enforces authentication, authorization, and tenant isolation (future phase).
   - Validates and coordinates asynchronous jobs with the background worker.

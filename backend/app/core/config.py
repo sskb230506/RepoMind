@@ -1,3 +1,4 @@
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,10 +25,29 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
-    # Database Configuration (PostgreSQL / SQLAlchemy)
-    DATABASE_URL: str = (
-        "postgresql://repomind_user:repomind_password@localhost:5432/repomind_db"
-    )
+    # Database Parameters
+    POSTGRES_SERVER: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = "repomind_user"
+    POSTGRES_PASSWORD: str = "repomind_password"
+    POSTGRES_DB: str = "repomind_db"
+
+    # Database URL override (if explicitly provided in environment)
+    DATABASE_URL: str | None = None
+
+    @computed_field
+    @property
+    def SQLALCHEMY_DATABASE_URI(self) -> str:
+        if self.DATABASE_URL:
+            url = self.DATABASE_URL
+            # Normalize postgresql:// to postgresql+psycopg:// if no driver is specified
+            if url.startswith("postgresql://"):
+                return url.replace("postgresql://", "postgresql+psycopg://", 1)
+            return url
+        return (
+            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
+            f"{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
 
 
 settings = Settings()

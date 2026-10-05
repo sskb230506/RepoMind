@@ -47,6 +47,9 @@ source .venv/bin/activate
 # Install backend dependencies
 pip install -r backend/requirements.txt
 
+# Run database migrations
+cd backend && alembic upgrade head && cd ..
+
 # Run the backend server
 uvicorn backend.app.main:app --reload --port 8000
 ```
