@@ -89,3 +89,8 @@ logs/
 
 # Docker
 .dockerignore.tmp
+
+# Repository ingestion storage & temporary workspaces
+data/
+data/repositories/
+repositories_storage/

@@ -25,6 +25,12 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
+    # Repository Ingestion & Storage Settings
+    REPO_STORAGE_PATH: str = "data/repositories"
+    MAX_REPO_SIZE_MB: int = 500
+    MAX_REPO_FILE_COUNT: int = 50000
+    GIT_CLONE_TIMEOUT_SECONDS: int = 120
+
     # Database Parameters
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: int = 5432

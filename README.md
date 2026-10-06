@@ -173,6 +173,61 @@ curl -X GET http://localhost:8000/health
 
 ---
 
+## 📥 Repository Ingestion API
+
+RepoMind supports ingesting public GitHub repositories into an isolated, secure workspace directory for dependency tracing and codebase intelligence.
+
+### Register and Ingest a Repository
+
+**Endpoint**: `POST /api/repositories`
+
+#### Request
+```bash
+curl -X POST http://localhost:8000/api/repositories \
+  -H "Content-Type: application/json" \
+  -d '{
+    "github_url": "https://github.com/octocat/Hello-World"
+  }'
+```
+
+#### Response (`201 Created`)
+```json
+{
+  "id": 1,
+  "name": "octocat/Hello-World",
+  "github_url": "https://github.com/octocat/Hello-World",
+  "default_branch": "master",
+  "status": "ready",
+  "created_at": "2026-10-06T08:00:00Z",
+  "updated_at": "2026-10-06T08:00:05Z"
+}
+```
+
+### Ingestion Lifecycle Statuses
+- `pending`: Record created, awaiting clone and validation
+- `indexing`: Clone and branch detection in progress
+- `ready`: Successfully cloned and validated, ready for analysis
+- `failed`: Ingestion failed (e.g. invalid URL, clone error, or exceeded size limits)
+
+### Security Safeguards
+- **Arbitrary Code Execution Defense**: Git hooks (`core.hooksPath=/dev/null`) and submodules are strictly disabled during clone operations.
+- **Filesystem Privacy**: Server filesystem paths are never returned to the client or exposed in API errors.
+- **Path Traversal Protection**: Storage destinations are resolved deterministically and verified to reside inside `REPO_STORAGE_PATH`.
+- **Resource Constraints**: Enforces limits on repository size (`MAX_REPO_SIZE_MB`, default 500 MB) and file counts (`MAX_REPO_FILE_COUNT`, default 50,000 files).
+- **SSRF Prevention**: Hostname is strictly validated against `github.com` (blocking private/internal IP access).
+
+### List Ingested Repositories
+```bash
+curl -X GET http://localhost:8000/api/repositories
+```
+
+### Get Ingestion Status by Repository ID
+```bash
+curl -X GET http://localhost:8000/api/repositories/1
+```
+
+---
+
 ## 🧪 Testing & Linting
 
 ### Run All Tests

@@ -4,9 +4,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 try:
+    from backend.app.api.v1.endpoints import repositories
     from backend.app.api.v1.router import api_router
     from backend.app.core.config import settings
 except ModuleNotFoundError:
+    from app.api.v1.endpoints import repositories
     from app.api.v1.router import api_router
     from app.core.config import settings
 
@@ -43,8 +45,15 @@ def health_check() -> dict[str, Any]:
     }
 
 
-# Include versioned API router
+# Include versioned API router (/api/v1/...)
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Direct mount for /api/repositories endpoint
+app.include_router(
+    repositories.router,
+    prefix="/api/repositories",
+    tags=["repositories"],
+)
 
 
 @app.get("/", include_in_schema=False)

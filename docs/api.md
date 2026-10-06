@@ -55,11 +55,61 @@ Dedicated versioned health check endpoint.
 
 ---
 
+### 3. Ingest Repository
+
+Ingests a public GitHub repository into an isolated, secure workspace directory.
+
+- **URL**: `/api/repositories` (also accessible via `/api/v1/repositories`)
+- **Method**: `POST`
+- **Request Body**:
+  ```json
+  {
+    "github_url": "https://github.com/owner/repository"
+  }
+  ```
+- **Response Codes**:
+  - `201 Created`: Repository successfully created, cloned, and validated.
+  - `400 Bad Request`: Malformed or unsupported URL, or limits exceeded.
+  - `409 Conflict`: Repository has already been registered or is currently being ingested.
+  - `502 Bad Gateway`: Git clone failure.
+
+#### Example Response
+```json
+{
+  "id": 1,
+  "name": "owner/repository",
+  "github_url": "https://github.com/owner/repository",
+  "default_branch": "main",
+  "status": "ready",
+  "created_at": "2026-10-06T08:00:00Z",
+  "updated_at": "2026-10-06T08:00:05Z"
+}
+```
+
+---
+
+### 4. List Repositories
+
+- **URL**: `/api/repositories`
+- **Method**: `GET`
+- **Query Parameters**:
+  - `skip` (optional, default: 0)
+  - `limit` (optional, default: 100)
+- **Response**: Array of repository objects.
+
+---
+
+### 5. Get Repository by ID
+
+- **URL**: `/api/repositories/{id}`
+- **Method**: `GET`
+- **Response**: Repository object.
+
+---
+
 ## Future Endpoints (Roadmap)
 
 | Method | Path | Description | Status |
 |--------|------|-------------|--------|
-| `POST` | `/api/v1/repositories` | Connect a GitHub repository | Planned |
-| `GET`  | `/api/v1/repositories` | List connected repositories | Planned |
 | `GET`  | `/api/v1/repositories/{id}/graph` | Retrieve dependency graph | Planned |
 | `POST` | `/api/v1/repositories/{id}/impact` | Compute change-impact analysis | Planned |
