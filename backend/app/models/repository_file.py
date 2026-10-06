@@ -20,6 +20,7 @@ except ModuleNotFoundError:
 
 if TYPE_CHECKING:
     from .repository import Repository
+    from .symbol import Symbol
 
 
 class RepositoryFile(Base):
@@ -55,6 +56,9 @@ class RepositoryFile(Base):
     # Relationships
     repository: Mapped["Repository"] = relationship(
         "Repository", back_populates="files"
+    )
+    symbols: Mapped[list["Symbol"]] = relationship(
+        "Symbol", back_populates="file", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:

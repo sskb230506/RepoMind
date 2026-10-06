@@ -289,6 +289,55 @@ curl -X POST http://localhost:8000/api/repositories/1/scan
 
 ---
 
+## 🧠 Source-Code Parsing Subsystem (Tree-sitter)
+
+RepoMind includes a language-aware AST parsing subsystem powered by Tree-sitter to parse source files, extract structural symbols, and map code hierarchies.
+
+### Supported Languages
+- 🐍 **Python** (`.py`, `.pyw`, `.pyi`)
+- 🟨 **JavaScript** (`.js`, `.jsx`, `.mjs`, `.cjs`)
+- 🔷 **TypeScript** (`.ts`, `.tsx`, `.mts`, `.cts`)
+- ☕ **Java** (`.java`)
+- 🧩 *Extensible*: New languages can be plugged into `ParserRegistry` by implementing `BaseLanguageParser`.
+
+### Extracted Symbol Categories
+For every parsed source file, the parser extracts:
+1. **Functions**: Top-level, standalone, or arrow functions.
+2. **Methods**: Functions inside classes or interfaces.
+3. **Classes**: Classes, interfaces, enums, records, and structs.
+4. **Imports**: ESM imports, CommonJS `require`, Python `import`/`from`, and Java imports.
+5. **Exports**: ESM `export`, CommonJS `module.exports`, Python `__all__`, and Java `public` members.
+6. **Function Calls**: Invocations (`method(...)`, `call()`, `super()`).
+7. **Inheritance Relationships**: Explicit `extends` and `implements` links.
+8. **Definitions**: Variable declarations, constants, type aliases, and fields.
+
+### Symbol Model
+- `id`: Unique symbol ID
+- `repository_id`: Repository ID
+- `file_id`: Associated file ID
+- `symbol_type`: Symbol category (`function`, `method`, `class`, `import`, `export`, `call`, `inheritance`, `definition`)
+- `name`: Identifier name (e.g. `login`, `Dog`, `MAX_AGE`)
+- `qualified_name`: Hierarchical path (e.g. `Dog.bark`, `AuthManager.login`)
+- `start_line` / `end_line`: 1-based source code line range
+- `signature`: Declaration signature or line snippet
+- `parent_symbol_id`: Foreign key referencing enclosing parent symbol (e.g. class enclosing a method)
+
+### List Extracted Symbols (Paginated)
+**Endpoint**: `GET /api/repositories/{repository_id}/symbols`
+
+```bash
+curl -X GET "http://localhost:8000/api/repositories/1/symbols?page=1&page_size=20&symbol_type=class"
+```
+
+### List Symbols for a Specific File
+**Endpoint**: `GET /api/repositories/{repository_id}/files/{file_id}/symbols`
+
+```bash
+curl -X GET "http://localhost:8000/api/repositories/1/files/5/symbols"
+```
+
+---
+
 ## 🧪 Testing & Linting
 
 ### Run All Tests

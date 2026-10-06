@@ -7,8 +7,10 @@ try:
     from backend.app.db.session import get_db
     from backend.app.models.repository import Repository
     from backend.app.models.repository_file import RepositoryFile
+    from backend.app.models.symbol import Symbol
     from backend.app.schemas.repository import RepositoryCreate, RepositoryResponse
     from backend.app.schemas.repository_file import PaginatedRepositoryFilesResponse
+    from backend.app.schemas.symbol import PaginatedSymbolsResponse, SymbolResponse
     from backend.app.services.ingestion import (
         GitCloneError,
         IngestionError,
@@ -23,8 +25,10 @@ except ModuleNotFoundError:
     from app.db.session import get_db
     from app.models.repository import Repository
     from app.models.repository_file import RepositoryFile
+    from app.models.symbol import Symbol
     from app.schemas.repository import RepositoryCreate, RepositoryResponse
     from app.schemas.repository_file import PaginatedRepositoryFilesResponse
+    from app.schemas.symbol import PaginatedSymbolsResponse, SymbolResponse
     from app.services.ingestion import (
         GitCloneError,
         IngestionError,
@@ -228,3 +232,95 @@ def rescan_repository_files(
         total_pages=1,
         items=items,
     )
+
+
+@router.get(
+    "/{repository_id}/symbols",
+    response_model=PaginatedSymbolsResponse,
+    summary="Get paginated repository symbols",
+    description=(
+        "Returns extracted AST symbols for the repository with optional filtering."
+    ),
+)
+def get_repository_symbols(
+    repository_id: int,
+    page: int = Query(1, ge=1, description="Page number starting from 1"),
+    page_size: int = Query(50, ge=1, le=500, description="Items per page"),
+    symbol_type: str | None = Query(None, description="Filter by symbol type"),
+    name: str | None = Query(None, description="Filter by symbol name"),
+    file_id: int | None = Query(None, description="Filter by file ID"),
+    db: Session = Depends(get_db),
+) -> PaginatedSymbolsResponse:
+    """
+    Retrieve paginated AST symbols for an ingested repository.
+    """
+    repo = db.get(Repository, repository_id)
+    if not repo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository not found.",
+        )
+
+    query = db.query(Symbol).filter(Symbol.repository_id == repository_id)
+
+    if symbol_type:
+        query = query.filter(Symbol.symbol_type == symbol_type.lower())
+    if name:
+        query = query.filter(Symbol.name.ilike(f"%{name}%"))
+    if file_id is not None:
+        query = query.filter(Symbol.file_id == file_id)
+
+    total = query.count()
+    total_pages = math.ceil(total / page_size) if total > 0 else 1
+    offset = (page - 1) * page_size
+    items = (
+        query.order_by(Symbol.file_id.asc(), Symbol.start_line.asc())
+        .offset(offset)
+        .limit(page_size)
+        .all()
+    )
+
+    return PaginatedSymbolsResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        items=items,
+    )
+
+
+@router.get(
+    "/{repository_id}/files/{file_id}/symbols",
+    response_model=list[SymbolResponse],
+    summary="Get symbols for a specific file",
+    description="Returns all extracted AST symbols for a specific repository file.",
+)
+def get_file_symbols(
+    repository_id: int,
+    file_id: int,
+    db: Session = Depends(get_db),
+) -> list[SymbolResponse]:
+    """
+    Retrieve all AST symbols extracted for a single repository file.
+    """
+    repo = db.get(Repository, repository_id)
+    if not repo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository not found.",
+        )
+
+    file_rec = db.get(RepositoryFile, file_id)
+    if not file_rec or file_rec.repository_id != repository_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository file not found.",
+        )
+
+    symbols = (
+        db.query(Symbol)
+        .filter(Symbol.repository_id == repository_id, Symbol.file_id == file_id)
+        .order_by(Symbol.start_line.asc())
+        .all()
+    )
+    return symbols

@@ -12,6 +12,7 @@ except ModuleNotFoundError:
 
 if TYPE_CHECKING:
     from .repository_file import RepositoryFile
+    from .symbol import Symbol
 
 
 class RepositoryStatus(StrEnum):
@@ -57,6 +58,11 @@ class Repository(Base):
     # Relationships
     files: Mapped[list["RepositoryFile"]] = relationship(
         "RepositoryFile",
+        back_populates="repository",
+        cascade="all, delete-orphan",
+    )
+    symbols: Mapped[list["Symbol"]] = relationship(
+        "Symbol",
         back_populates="repository",
         cascade="all, delete-orphan",
     )

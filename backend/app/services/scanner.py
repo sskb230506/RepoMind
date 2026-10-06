@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 
 try:
     from backend.app.models.repository_file import RepositoryFile
+    from backend.app.services.symbol_service import parse_repository_symbols
 except ModuleNotFoundError:
     from app.models.repository_file import RepositoryFile
+    from app.services.symbol_service import parse_repository_symbols
 
 logger = logging.getLogger(__name__)
 
@@ -394,4 +396,13 @@ def scan_repository_files(
         len(created_records),
         repository_id,
     )
+
+    # Automatically parse symbols for supported source files
+    try:
+        parse_repository_symbols(db, repository_id, repo_dir)
+    except Exception as e:
+        logger.warning(
+            "Failed to parse symbols for repository %d: %s", repository_id, e
+        )
+
     return created_records
