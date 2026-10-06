@@ -18,11 +18,11 @@ for p in (str(backend_path), str(root_path)):
 try:
     from backend.app.core.config import settings
     from backend.app.db.base import Base
-    from backend.app.models.repository import Repository  # noqa: F401
+    from backend.app.models import Repository, RepositoryFile  # noqa: F401
 except ModuleNotFoundError:
     from app.core.config import settings
     from app.db.base import Base
-    from app.models.repository import Repository  # noqa: F401
+    from app.models import Repository, RepositoryFile  # noqa: F401
 
 # Alembic Config object
 config = context.config

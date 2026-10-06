@@ -228,6 +228,67 @@ curl -X GET http://localhost:8000/api/repositories/1
 
 ---
 
+## 📂 Repository File Scanning & Inventory API
+
+Upon ingestion (or manual rescan), RepoMind recursively scans repository files, analyzes language and metadata, and creates a queryable inventory.
+
+### File Metadata Filtering & Safety
+- **Ignored Directories**: `.git`, `node_modules`, `dist`, `build`, `target`, `venv`, `.venv`, `__pycache__`, `coverage`, `vendor`.
+- **Secret Protection**: `.env`, `.env.*`, private keys (`id_rsa`, `.pem`, `.key`), credentials (`*-credentials.json`, `service-account*.yaml`) are strictly excluded and never indexed.
+- **Generated File Detection**: Identifies minified code (`.min.js`, `.min.css`), source maps (`*.map`), dependency lockfiles (`package-lock.json`, `poetry.lock`, `Cargo.lock`, etc.), protobuf outputs, and files with `@generated`/`DO NOT EDIT` markers.
+- **Binary Detection**: Heuristic inspection via extension and null-byte header buffer check.
+
+### List Repository Files (Paginated)
+
+**Endpoint**: `GET /api/repositories/{repository_id}/files`
+
+#### Request Parameters
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `page` | Integer | `1` | Page number (1-based) |
+| `page_size` | Integer | `50` | Records per page (max 500) |
+| `language` | String | `null` | Filter by language (e.g. `Python`, `TypeScript`) |
+| `is_binary` | Boolean | `null` | Filter binary vs text files |
+| `is_generated` | Boolean | `null` | Filter generated / minified files |
+| `path_prefix` | String | `null` | Filter by directory/path prefix |
+
+#### Example Request
+```bash
+curl -X GET "http://localhost:8000/api/repositories/1/files?page=1&page_size=20&language=Python"
+```
+
+#### Example Response (`200 OK`)
+```json
+{
+  "total": 42,
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 3,
+  "items": [
+    {
+      "id": 101,
+      "repository_id": 1,
+      "path": "app/main.py",
+      "filename": "main.py",
+      "extension": ".py",
+      "language": "Python",
+      "size_bytes": 1420,
+      "is_binary": false,
+      "is_generated": false,
+      "created_at": "2026-10-06T08:00:05Z"
+    }
+  ]
+}
+```
+
+### Trigger Repository Rescan
+**Endpoint**: `POST /api/repositories/{repository_id}/scan`
+```bash
+curl -X POST http://localhost:8000/api/repositories/1/scan
+```
+
+---
+
 ## 🧪 Testing & Linting
 
 ### Run All Tests

@@ -1,13 +1,17 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Enum, Integer, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 try:
     from backend.app.db.base import Base
 except ModuleNotFoundError:
     from app.db.base import Base
+
+if TYPE_CHECKING:
+    from .repository_file import RepositoryFile
 
 
 class RepositoryStatus(StrEnum):
@@ -48,6 +52,13 @@ class Repository(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    # Relationships
+    files: Mapped[list["RepositoryFile"]] = relationship(
+        "RepositoryFile",
+        back_populates="repository",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:

@@ -5,9 +5,13 @@ from sqlalchemy.orm import Session
 
 try:
     from backend.app.main import app
+    from backend.app.models.repository import Repository, RepositoryStatus
+    from backend.app.models.repository_file import RepositoryFile
     from backend.app.services.ingestion import GitCloneError
 except ModuleNotFoundError:
     from app.main import app
+    from app.models.repository import Repository, RepositoryStatus
+    from app.models.repository_file import RepositoryFile
     from app.services.ingestion import GitCloneError
 
 client = TestClient(app)
@@ -135,3 +139,135 @@ class TestRepositoriesApi:
         # Get non-existent
         not_found = client.get("/api/repositories/999999")
         assert not_found.status_code == 404
+
+    def test_get_repository_files_pagination_and_filters(
+        self,
+        db_session: Session,
+        override_get_db,
+    ):
+        """Test GET /api/repositories/{id}/files with pagination and filters."""
+        # 1. Create a repository record
+        repo = Repository(
+            name="pallets/jinja",
+            github_url="https://github.com/pallets/jinja",
+            default_branch="main",
+            status=RepositoryStatus.READY,
+        )
+        db_session.add(repo)
+        db_session.commit()
+        db_session.refresh(repo)
+
+        # 2. Add multiple repository files
+        sample_files = [
+            RepositoryFile(
+                repository_id=repo.id,
+                path="src/jinja/environment.py",
+                filename="environment.py",
+                extension=".py",
+                language="Python",
+                size_bytes=12000,
+                is_binary=False,
+                is_generated=False,
+            ),
+            RepositoryFile(
+                repository_id=repo.id,
+                path="src/jinja/compiler.py",
+                filename="compiler.py",
+                extension=".py",
+                language="Python",
+                size_bytes=8500,
+                is_binary=False,
+                is_generated=False,
+            ),
+            RepositoryFile(
+                repository_id=repo.id,
+                path="src/jinja/runtime.py",
+                filename="runtime.py",
+                extension=".py",
+                language="Python",
+                size_bytes=4200,
+                is_binary=False,
+                is_generated=False,
+            ),
+            RepositoryFile(
+                repository_id=repo.id,
+                path="docs/index.md",
+                filename="index.md",
+                extension=".md",
+                language="Markdown",
+                size_bytes=1500,
+                is_binary=False,
+                is_generated=False,
+            ),
+            RepositoryFile(
+                repository_id=repo.id,
+                path="assets/logo.png",
+                filename="logo.png",
+                extension=".png",
+                language=None,
+                size_bytes=34000,
+                is_binary=True,
+                is_generated=False,
+            ),
+            RepositoryFile(
+                repository_id=repo.id,
+                path="dist/bundle.min.js",
+                filename="bundle.min.js",
+                extension=".js",
+                language="JavaScript",
+                size_bytes=52000,
+                is_binary=False,
+                is_generated=True,
+            ),
+        ]
+        db_session.add_all(sample_files)
+        db_session.commit()
+
+        # 3. Test pagination (page=1, page_size=2)
+        res_page1 = client.get(f"/api/repositories/{repo.id}/files?page=1&page_size=2")
+        assert res_page1.status_code == 200
+        data1 = res_page1.json()
+        assert data1["total"] == 6
+        assert data1["page"] == 1
+        assert data1["page_size"] == 2
+        assert data1["total_pages"] == 3
+        assert len(data1["items"]) == 2
+
+        # Test pagination (page=2, page_size=2)
+        res_page2 = client.get(f"/api/repositories/{repo.id}/files?page=2&page_size=2")
+        assert res_page2.status_code == 200
+        data2 = res_page2.json()
+        assert data2["page"] == 2
+        assert len(data2["items"]) == 2
+
+        # 4. Test language filter
+        res_lang = client.get(f"/api/repositories/{repo.id}/files?language=Python")
+        assert res_lang.status_code == 200
+        lang_data = res_lang.json()
+        assert lang_data["total"] == 3
+        assert all(item["language"] == "Python" for item in lang_data["items"])
+
+        # 5. Test is_binary filter
+        res_bin = client.get(f"/api/repositories/{repo.id}/files?is_binary=true")
+        assert res_bin.status_code == 200
+        bin_data = res_bin.json()
+        assert bin_data["total"] == 1
+        assert bin_data["items"][0]["filename"] == "logo.png"
+
+        # 6. Test is_generated filter
+        res_gen = client.get(f"/api/repositories/{repo.id}/files?is_generated=true")
+        assert res_gen.status_code == 200
+        gen_data = res_gen.json()
+        assert gen_data["total"] == 1
+        assert gen_data["items"][0]["filename"] == "bundle.min.js"
+
+        # 7. Test path_prefix filter
+        res_prefix = client.get(f"/api/repositories/{repo.id}/files?path_prefix=src")
+        assert res_prefix.status_code == 200
+        prefix_data = res_prefix.json()
+        assert prefix_data["total"] == 3
+        assert all(item["path"].startswith("src/") for item in prefix_data["items"])
+
+        # 8. Test 404 for non-existent repository
+        res_404 = client.get("/api/repositories/999999/files")
+        assert res_404.status_code == 404

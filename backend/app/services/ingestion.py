@@ -11,9 +11,11 @@ from sqlalchemy.orm import Session
 try:
     from backend.app.core.config import settings
     from backend.app.models.repository import Repository, RepositoryStatus
+    from backend.app.services.scanner import scan_repository_files
 except ModuleNotFoundError:
     from app.core.config import settings
     from app.models.repository import Repository, RepositoryStatus
+    from app.services.scanner import scan_repository_files
 
 logger = logging.getLogger(__name__)
 
@@ -337,6 +339,9 @@ def ingest_repository(db: Session, raw_github_url: str) -> Repository:
         clone_repository(clean_url, target_dir)
         validate_repo_limits(target_dir)
         branch = detect_default_branch(target_dir)
+
+        # 5. Scan repository and create file inventory
+        scan_repository_files(db, repo.id, target_dir)
 
         repo.default_branch = branch
         repo.status = RepositoryStatus.READY
